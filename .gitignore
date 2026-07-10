@@ -1,0 +1,23 @@
+# ── Toolchains (large binaries, kept on VM disk only, not committed) ──
+tools/android-sdk/
+tools/gradle-*/
+
+# ── Downloaded installers/archives ──
+**/downloads/
+
+# ── Build outputs & caches ──
+**/build/
+.gradle/
+**/.gradle/
+*.apk
+*.aab
+local.properties
+
+# ── Node / Expo (future) ──
+node_modules/
+.expo/
+dist/
+
+# ── Exception: keep published APKs under an app's dist/ so they can be downloaded from GitHub ──
+!apps/*/dist/
+!apps/*/dist/*.apk

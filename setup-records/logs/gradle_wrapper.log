@@ -1,0 +1,5 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :wrapper
+
+BUILD SUCCESSFUL in 16s
+1 actionable task: 1 executed

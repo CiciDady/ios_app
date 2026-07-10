@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Snake</title>
+<style>
+  :root { --bg:#0b1021; --panel:#141a33; --accent:#38e07b; --food:#ff5470; --grid:#1e2647; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:#e6ebff;
+    font-family: -apple-system, Roboto, "Segoe UI", sans-serif; overflow:hidden; }
+  #app { display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    height:100%; padding:12px; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; width:100%;
+    max-width:420px; }
+  h1 { font-size:22px; margin:0; letter-spacing:2px; color:var(--accent); }
+  .score { font-size:16px; background:var(--panel); padding:6px 12px; border-radius:10px; }
+  .board-wrap { position:relative; }
+  canvas { background:var(--panel); border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.4);
+    touch-action:none; }
+  .overlay { position:absolute; inset:0; display:flex; flex-direction:column; gap:10px;
+    align-items:center; justify-content:center; background:rgba(11,16,33,.82);
+    border-radius:14px; text-align:center; padding:16px; }
+  .overlay.hidden { display:none; }
+  .overlay h2 { margin:0; font-size:26px; }
+  .overlay p { margin:0; opacity:.8; font-size:14px; }
+  button { border:none; border-radius:12px; padding:12px 22px; font-size:16px; font-weight:600;
+    color:#04240f; background:var(--accent); cursor:pointer; }
+  .pad { display:grid; grid-template-columns:repeat(3,64px); grid-template-rows:repeat(3,64px);
+    gap:8px; margin-top:4px; }
+  .pad button { background:var(--panel); color:#e6ebff; font-size:24px; border-radius:14px;
+    padding:0; height:64px; }
+  .pad .spacer { visibility:hidden; }
+  .hint { font-size:12px; opacity:.6; }
+  .badge { position:absolute; top:8px; left:8px; font-size:11px; letter-spacing:1px;
+    background:var(--accent); color:#04240f; padding:3px 8px; border-radius:8px; display:none; }
+  .badge.on { display:block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>SNAKE</h1>
+    <div class="score">Score: <span id="score">0</span> &nbsp;|&nbsp; Best: <span id="best">0</span></div>
+  </header>
+
+  <div class="board-wrap">
+    <canvas id="board" width="360" height="360"></canvas>
+    <div id="badge" class="badge">AUTOPLAY</div>
+    <div id="overlay" class="overlay">
+      <h2 id="ov-title">Snake</h2>
+      <p id="ov-msg">Swipe or use the arrows to move.</p>
+      <button id="startBtn">Start Game</button>
+    </div>
+  </div>
+
+  <div class="pad" aria-label="direction pad">
+    <span class="spacer"></span>
+    <button data-dir="up">&#9650;</button>
+    <span class="spacer"></span>
+    <button data-dir="left">&#9664;</button>
+    <span class="spacer"></span>
+    <button data-dir="right">&#9654;</button>
+    <span class="spacer"></span>
+    <button data-dir="down">&#9660;</button>
+    <span class="spacer"></span>
+  </div>
+  <div class="hint">Arrow keys / WASD / swipe / on-screen pad</div>
+</div>
+
+<script>
+(function () {
+  var canvas = document.getElementById('board');
+  var ctx = canvas.getContext('2d');
+  var CELLS = 18;                // grid is CELLS x CELLS
+  var SIZE = canvas.width / CELLS;
+  var scoreEl = document.getElementById('score');
+  var bestEl = document.getElementById('best');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ov-title');
+  var ovMsg = document.getElementById('ov-msg');
+  var startBtn = document.getElementById('startBtn');
+  var badge = document.getElementById('badge');
+
+  // Optional demo mode: ?autoplay=1 lets a simple built-in AI play (used for automated demos).
+  // The shipped Android app loads this file without query params, so it stays fully manual.
+  var params = new URLSearchParams(location.search);
+  var AUTOPLAY = params.get('autoplay') === '1';
+  var BASE_SPEED = parseInt(params.get('speed') || '130', 10);
+
+  var snake, dir, nextDir, food, score, best, timer, running, speed;
+
+  best = parseInt(localStorage.getItem('snake_best') || '0', 10);
+  bestEl.textContent = best;
+
+  function reset() {
+    snake = [{x:6,y:9},{x:5,y:9},{x:4,y:9}];
+    dir = {x:1,y:0}; nextDir = {x:1,y:0};
+    score = 0; speed = BASE_SPEED;
+    scoreEl.textContent = score;
+    placeFood();
+  }
+
+  function placeFood() {
+    while (true) {
+      var fx = Math.floor(Math.random()*CELLS);
+      var fy = Math.floor(Math.random()*CELLS);
+      var onSnake = snake.some(function(s){return s.x===fx && s.y===fy;});
+      if (!onSnake) { food = {x:fx, y:fy}; return; }
+    }
+  }
+
+  function setDir(nx, ny) {
+    if (nx === -dir.x && ny === -dir.y) return; // prevent reversing directly
+    nextDir = {x:nx, y:ny};
+  }
+
+  // Greedy, collision-aware direction picker for autoplay demo.
+  function aiChooseDir() {
+    var head = snake[0];
+    var opts = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+    var safe = [];
+    for (var i=0;i<opts.length;i++){
+      var d = opts[i];
+      if (d.x === -dir.x && d.y === -dir.y) continue;
+      var nx = head.x+d.x, ny = head.y+d.y;
+      if (nx<0||ny<0||nx>=CELLS||ny>=CELLS) continue;
+      var hitsBody = false;
+      for (var j=0;j<snake.length-1;j++){ if (snake[j].x===nx && snake[j].y===ny){hitsBody=true;break;} }
+      if (hitsBody) continue;
+      safe.push({d:d, dist: Math.abs(nx-food.x)+Math.abs(ny-food.y)});
+    }
+    if (!safe.length) return;
+    safe.sort(function(a,b){return a.dist-b.dist;});
+    setDir(safe[0].d.x, safe[0].d.y);
+  }
+
+  function step() {
+    if (AUTOPLAY) aiChooseDir();
+    dir = nextDir;
+    var head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+    if (head.x < 0 || head.y < 0 || head.x >= CELLS || head.y >= CELLS) return gameOver();
+    if (snake.some(function(s){return s.x===head.x && s.y===head.y;})) return gameOver();
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      scoreEl.textContent = score;
+      if (speed > 70) { speed -= 3; restartTimer(); }
+      placeFood();
+    } else {
+      snake.pop();
+    }
+    draw();
+  }
+
+  function draw() {
+    ctx.fillStyle = '#141a33';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.strokeStyle = '#1e2647';
+    ctx.lineWidth = 1;
+    for (var i=1;i<CELLS;i++){
+      ctx.beginPath(); ctx.moveTo(i*SIZE,0); ctx.lineTo(i*SIZE,canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i*SIZE); ctx.lineTo(canvas.width,i*SIZE); ctx.stroke();
+    }
+
+    ctx.fillStyle = '#ff5470';
+    roundRect(food.x*SIZE+2, food.y*SIZE+2, SIZE-4, SIZE-4, 5); ctx.fill();
+
+    for (var j=0;j<snake.length;j++){
+      ctx.fillStyle = j===0 ? '#7dffb0' : '#38e07b';
+      roundRect(snake[j].x*SIZE+1, snake[j].y*SIZE+1, SIZE-2, SIZE-2, 5); ctx.fill();
+    }
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function restartTimer(){
+    clearInterval(timer);
+    timer = setInterval(step, speed);
+  }
+
+  function start() {
+    reset();
+    overlay.classList.add('hidden');
+    running = true;
+    restartTimer();
+    draw();
+  }
+
+  function gameOver() {
+    clearInterval(timer);
+    running = false;
+    if (score > best) { best = score; localStorage.setItem('snake_best', String(best)); bestEl.textContent = best; }
+    ovTitle.textContent = 'Game Over';
+    ovMsg.textContent = 'Score: ' + score + '  ·  Best: ' + best;
+    startBtn.textContent = 'Play Again';
+    overlay.classList.remove('hidden');
+    if (AUTOPLAY) setTimeout(start, 1200); // keep the demo looping
+  }
+
+  document.addEventListener('keydown', function(e){
+    var k = e.key.toLowerCase();
+    if (k==='arrowup'||k==='w') setDir(0,-1);
+    else if (k==='arrowdown'||k==='s') setDir(0,1);
+    else if (k==='arrowleft'||k==='a') setDir(-1,0);
+    else if (k==='arrowright'||k==='d') setDir(1,0);
+    else return;
+    e.preventDefault();
+  });
+
+  document.querySelectorAll('.pad button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var d = b.getAttribute('data-dir');
+      if (d==='up') setDir(0,-1);
+      if (d==='down') setDir(0,1);
+      if (d==='left') setDir(-1,0);
+      if (d==='right') setDir(1,0);
+    });
+  });
+
+  var sx=0, sy=0;
+  canvas.addEventListener('touchstart', function(e){
+    var t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY;
+  }, {passive:true});
+  canvas.addEventListener('touchend', function(e){
+    var t=e.changedTouches[0];
+    var dx=t.clientX-sx, dy=t.clientY-sy;
+    if (Math.abs(dx) > Math.abs(dy)) { setDir(dx>0?1:-1, 0); }
+    else { setDir(0, dy>0?1:-1); }
+  }, {passive:true});
+
+  startBtn.addEventListener('click', start);
+
+  reset();
+  draw();
+
+  if (AUTOPLAY) {
+    badge.classList.add('on');
+    ovMsg.textContent = 'Automated demo — the AI plays itself.';
+    setTimeout(start, 600);
+  }
+})();
+</script>
+</body>
+</html>

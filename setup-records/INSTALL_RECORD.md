@@ -85,3 +85,33 @@ export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platfo
 | **大文件不进上下文** | 二进制/大依赖用 `.gitignore` 排除，不读取其内容；只记录路径与大小 |
 | **复用记录** | 把结论沉淀到本记录与 `AGENTS.md`，后续直接引用，不重复分析 |
 | **控制截图/录屏** | 仅在需要可视化验证时录屏，且只录关键片段 |
+
+## 8. 追加：Gradle 与首个 APK 构建（2026-07-10）
+
+> 目录结构已重构为英文：`tools/`（共享工具链，gitignore）、`apps/`（每个 app 一个目录）、`setup-records/`。SDK 已从 `android-app/android-sdk` 移动到 `tools/android-sdk`。
+
+### 8.1 新增下载文件
+
+| 文件 | 来源 URL | 存放路径 | 大小 (字节) | 人类可读 | SHA256 |
+|------|---------|---------|------------|---------|--------|
+| gradle-8.10.2-bin.zip | https://services.gradle.org/distributions/gradle-8.10.2-bin.zip | `setup-records/downloads/gradle-8.10.2-bin.zip` | 136,715,430 | 131M | `31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26` |
+
+- 解压到 `tools/gradle-8.10.2/`（146M，已 gitignore），用于生成项目的 Gradle Wrapper。
+
+### 8.2 首个 APK（贪吃蛇）
+
+- 工程：`apps/snake-game/`（原生 Android + Java + WebView 承载 HTML5 Canvas 贪吃蛇）。
+- 构建命令：
+  ```bash
+  cd apps/snake-game
+  echo "sdk.dir=/workspace/tools/android-sdk" > local.properties
+  export ANDROID_SDK_ROOT=/workspace/tools/android-sdk
+  ./gradlew :app:assembleDebug
+  ```
+- 产物：`apps/snake-game/app/build/outputs/apk/debug/app-debug.apk`（约 13.9 KB，`build/` 已 gitignore）。
+- 结果：**BUILD SUCCESSFUL** —— 证明当前云端环境**已可生成 APK**。
+- ⚠️ 云端无 `/dev/kvm`，无法运行模拟器；APK 需装到真机查看，游戏画面已用浏览器演示验证。
+
+### 8.3 构建日志
+
+- `logs/download_gradle.log`、`logs/gradle_wrapper.log`、`logs/build_apk.log`、`logs/build_apk2.log`

@@ -17,3 +17,7 @@ local.properties
 node_modules/
 .expo/
 dist/
+
+# ── Exception: keep published APKs under an app's dist/ so they can be downloaded from GitHub ──
+!apps/*/dist/
+!apps/*/dist/*.apk

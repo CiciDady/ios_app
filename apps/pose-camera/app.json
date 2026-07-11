@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Pose Camera",
+    "slug": "pose-camera",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "用于摆拍引导与拍照。",
+        "NSPhotoLibraryAddUsageDescription": "用于保存拍摄的照片到相册。"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0b1021",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.posecamera"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允许 Pose Camera 使用相机来引导摆拍与拍照。"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "允许 Pose Camera 保存照片到相册。",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "react-native-fast-tflite"
+    ]
+  }
+}

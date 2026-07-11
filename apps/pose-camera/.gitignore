@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# keep published APKs for download
+!dist/
+!dist/*.apk

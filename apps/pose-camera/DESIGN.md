@@ -149,3 +149,25 @@
 - **真机才能验**:相机预览、叠加、倒计时拍照、以及(下一步)实时姿态检测与自动拍。
 
 本文件随开发持续更新。
+
+---
+
+## 11. 构建与阻塞记录（2026-07-11）
+
+### 已验证(真机可装)
+- ✅ `expo prebuild` 生成 android 工程,`Gradle` 打包成功。
+- ✅ **基础版 Dev APK 已产出**:`apps/pose-camera/dist/pose-camera-base-arm64.apk`(arm64 release,约 **52MB**,debug 证书签名,可直接装安卓真机)。
+- ✅ 该 APK 可验证:相机预览、姿势轮廓叠加、场景选择、推荐/换一批、透明度/翻转、2–10s 倒计时拍照、存相册。
+- ✅ **原生工具链可用**:重装了 Android SDK + **NDK 27.1.12297006** + CMake 3.22.1(gitignored 的 `tools/` 在换 VM 后会丢失,需按 `setup-records/INSTALL_RECORD.md` 重装)。
+- ✅ **`react-native-vision-camera` 5.1.0 + `react-native-worklets-core` + `react-native-fast-tflite` 3.0.1 能在本栈(Expo 57 / RN 0.86 / React 19)编译链接**(已随该 APK 一起构建通过,只是尚未在 JS 中启用)。
+
+### 阻塞:姿态检测模型
+- ❌ **MoveNet TFLite 模型无法免登录下载**(官方 Kaggle/Google 存储 403,需鉴权)。这是「核心功能 2:进轮廓自动拍」目前的**唯一硬阻塞**。
+- 需要用户三选一:
+  1. 提供 **MoveNet SinglePose Lightning `.tflite`** 模型文件(自 Kaggle 下载后加入仓库);
+  2. 提供 **Kaggle API 凭证**(作为 secret),我来下载;
+  3. 同意改用 **ML Kit Pose Detection**(自带模型、免下载,但需接兼容 vision-camera v5 的插件,存在版本适配风险)。
+
+### 下一步(拿到模型/决策后)
+- 接 `fast-tflite` + `vision-camera-resize-plugin` 的 frame processor → 输出关键点 → 喂给已完成并单测的 `matchScore` → 实现「达阈值自动拍」。
+- 重打 Dev Build APK,真机联调。
